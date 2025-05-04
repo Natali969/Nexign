@@ -5,18 +5,18 @@
 
 В файле .yaml для эмулятора коммутатора имеется следующее:
 
-  spring:
-    datasource:
-      url: jdbc:h2:mem:cdr-db
-      driver-class-name: org.h2.Driver
-      username: sa
-      password: password
-    h2:
-      console:
-        path: /h2-console
-        enabled: true
-        settings:
-          web-allow-others: true
+```spring:
+  datasource:
+    url: jdbc:h2:mem:cdr-db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  h2:
+    console:
+      path: /h2-console
+      enabled: true
+      settings:
+        web-allow-others: true```
         
 Это означает, что к БД H2 можно получить доступ через консоль по адресу http://localhost:8082/h2-console. Для получения доступа достаточно ввести необходимые данные.
 Доступ к консоли получается через браузер.
