@@ -9,8 +9,8 @@ spring:
   datasource:
     url: jdbc:h2:mem:cdr-db
     driver-class-name: org.h2.Driver
-    username: sa
-    password: password
+    username: ******
+    password: ******
   h2:
     console:
       path: /h2-console
