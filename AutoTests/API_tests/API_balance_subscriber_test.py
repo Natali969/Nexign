@@ -1,53 +1,20 @@
 import pytest
 import psycopg2
 import requests
+from modules.db_connection import db_connection_brt
+from modules.work_db import get_random_msisdn_balance_from_db, get_balance_subscriber
 
 # тестовый URL
 # когда будет готова API, заменить на настоящий
 API_URL = "http://localhost:8060/api/"
 
-# подключение к БД postgres BRT
-@pytest.fixture(scope="module")
-def db_connection_brt():
-    conn = None
-    try:
-        conn = psycopg2.connect(
-            host="localhost",
-            database="brt-db",
-            user="postgres",
-            password="postgres",
-            port="5432")
-        yield conn
-    except psycopg2.Error as e:
-        pytest.fail(f"Ошибка при подключении к PostgreSQL: {e}")
-    except Exception as e:
-        pytest.fail(f"Произошла ошибка: {e}")
-    finally:
-        if conn:
-            conn.close()
 
-# выборка валидной информации из БД
-@pytest.fixture(scope="module")
-def get_msisdn_balance_from_db(db_connection_brt, selected_tariff_id):
+def test_subscriber_balance_replenishment(db_connection_brt):
     try:
-        cur = db_connection_brt.cursor()
-        # выберем случайный номер телефона и id абонента
-        cur.execute(f"SELECT balance, msisdn FROM subscribers WHERE tariff_id = {selected_tariff_id} ORDER BY RANDOM() LIMIT 1;")
-        for row in cur.fetchall():
-            test_balance = int(row[0])
-            test_msisdn = int(row[1])
-        
-    except psycopg2.Error as e:
-        pytest.fail(f"Ошибка при запросе к PostgreSQL: {e}")
-    except Exception as e:
-        pytest.fail(f"Произошла ошибка: {e}")
-    finally:
-        return test_msisdn, test_balance
-
-def test_subscriber_balance_replenishment(id_tariff = 2, sum_money = 10.00):
-    try:
+        id_tariff = 2
+        sum_money = 10.00
         # получим номер случайного абонента и его баланс
-        test_msisdn, start_balance_subscriber = get_msisdn_balance_from_db(id_tariff)
+        test_msisdn, start_balance_subscriber = get_random_msisdn_balance_from_db(db_connection_brt, id_tariff)
 
         # производится авторизация абонента
         # Делаем запрос к API
@@ -68,7 +35,7 @@ def test_subscriber_balance_replenishment(id_tariff = 2, sum_money = 10.00):
 
         
         # получаем баланс абонента после его пополнения
-        test_msisdn, end_balance_subscriber = get_msisdn_balance_from_db(id_tariff)
+        test_msisdn, end_balance_subscriber = get_balance_subscriber(db_connection_brt, test_msisdn)
 
         # проверим, что значение баланса изменилось на нужну сумму
         assert end_balance_subscriber - start_balance_subscriber == sum_money
