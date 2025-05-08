@@ -1,44 +1,21 @@
 import random
 import datetime
 from faker import Faker
-import psycopg2
 from psycopg2 import Error
+from modulesCDR.db_connection import db_connection_brt
+from modulesCDR.work_db import get_subscribers_list
 
-# список номеров абонентов "Ромашки" из БД
-subscribers_list = []
-try:
-    # Подключиться к существующей базе данных
-    connection = psycopg2.connect(user="postgres",
-                                  # пароль, который указали при установке PostgreSQL
-                                  password="postgres",
-                                  host="127.0.0.1",
-                                  port="5432",
-                                  database="nexign")
-
-    cursor = connection.cursor()
-    postgreSQL_select_Query = "SELECT msisdn FROM clients"
-    cursor.execute(postgreSQL_select_Query)
-    # Выбор строк из таблицы с абонентами с помощью cursor.fetchall
-    subscribers_records = cursor.fetchall()
- 
-    # добавляем номер каждого из абонентов в список
-    for row in subscribers_records:
-        subscribers_list.append(str(row[0]))
-
-except (Exception, Error) as error:
-    print("Ошибка при работе с PostgreSQL", error)
-finally:
-    if connection:
-        cursor.close()
-        connection.close()
-        print("Соединение с PostgreSQL закрыто")
 
 fake = Faker('ru_RU')
-
+outgoing_call = '01'
+ingoing_call = '02'
+subscribers_list = get_subscribers_list()
 # генерация записи по абоненту
 def generate_cdr_entry():
+    # список номеров абонентов "Ромашки" из БД
+    subscribers_list = get_subscribers_list()
     # тип вызова: исходящий или входящий
-    call_type = random.choice(['01', '02'])
+    call_type = random.choice([outgoing_call, ingoing_call])
 
     # номер абонента должен выбираться из БД запросом SELECT,
     # а дальше - рандомный выбор в коде
@@ -46,6 +23,7 @@ def generate_cdr_entry():
     # временная замена - список номеров абонентов
     # обслуживаемый абонент выбирается из БД
     our_subscriber = random.choice(subscribers_list)
+    subscribers_list.remove(our_subscriber)
     # с кем осуществлялась связь - генерируется случайно
     other_subscriber = f'7{random.randint(900, 999)}{"".join(random.choices("0123456789", k=7))}'
 
@@ -55,7 +33,7 @@ def generate_cdr_entry():
     # генерируется дата и время начала звонка
     start_datetime = fake.date_time_between(start_date='-1y', end_date='-1d')
     # продолжительность звонка от 1 секунды до получаса
-    duration = random.randint(1, 1800)
+    duration = random.randint(1, 72000)
 
     # дата и время окончания звонка
     end_datetime = start_datetime + datetime.timedelta(seconds=duration)
@@ -77,10 +55,7 @@ def generate_cdr_entry():
         # третья - исходящий вызов абонента А после 00:00:00
         # четвёртая - входящий вызов абоненту Б после 00:00:00
         if double_call:
-            if call_type == '01':
-                call_type_anti = '02'
-            else:
-                call_type_anti = '01'
+            call_type_anti = ingoing_call if call_type == outgoing_call else outgoing_call
             entries.append([call_type, our_subscriber, other_subscriber,
                             start_datetime.isoformat(), midnight.isoformat()])
             entries.append([call_type_anti,other_subscriber, our_subscriber,
@@ -107,10 +82,9 @@ def generate_cdr_entry():
         if double_call:
             entries.append([call_type, our_subscriber, other_subscriber,
                             start_datetime.isoformat(), end_datetime.isoformat()])
-            if call_type == '01':
-                call_type_anti = '02'
-            else:
-                call_type_anti = '01'
+            
+            call_type_anti = ingoing_call if call_type == outgoing_call else outgoing_call
+
             entries.append([call_type_anti, other_subscriber, our_subscriber,
                             start_datetime.isoformat(), end_datetime.isoformat()])
         else:
