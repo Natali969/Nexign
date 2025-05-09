@@ -2,18 +2,19 @@ import pytest
 import random
 import psycopg2
 from psycopg2 import Error
+from datetime import datetime
 # Раскладывает CDR-файл на записи, которые записывваются в список
-def get_amount_calls(db_connection_brt, request):
-    try:
-        cur = db_connection_brt.cursor()
-        cur.execute(request)
-        cdrs_brt = [row for row in cur.fetchall()]
-        start_amount_calls = len(cdrs_brt)
-    except psycopg2.Error as e:
-        pytest.fail(f"Ошибка при запросе к PostgreSQL: {e}")
-    except Exception as e:
-        pytest.fail(f"Произошла ошибка: {e}")
-    return start_amount_calls
+def get_durability_call(calls_parameters):
+    durability_call = datetime.strptime(
+        calls_parameters[0][4], '%Y-%m-%dT%H:%M:%S') - datetime.strptime(calls_parameters[0][3], '%Y-%m-%dT%H:%M:%S')
+    hours, minutes, seconds = map(int, str(durability_call).split(':'))
+    if seconds >= 1:
+        minutes += 1
+        if minutes == 60:
+            hours += 1
+            minutes = 0
+    return hours * 60 + minutes
+
 
 # возвращает даты начала звонков для последних 10 звонков
 def get_dates_cdr(db_connection_brt):
