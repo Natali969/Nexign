@@ -1,14 +1,19 @@
 import time
 from modules.work_browser import browser
 from modules.db_connection import db_connection_brt
-from modules.useful_functions import read_and_parse_file
 from modules.work_db import get_amount_calls, get_balance_subscriber
+from modules.generate_cdrs import generate_classic_to_other_entries
 from modules.console_h2 import open_h2_console
+from modules.durability_call import get_durability_call
 
 def test_add_cdrs(browser, db_connection_brt):
-    filepath = 'test_e2e/classic_to_other_operator.txt'
-    # раскладываем текстовый файл на массивы
-    calls_parameters = read_and_parse_file(filepath)
+    # получим список из 10 звонков
+    calls_parameters = []
+    for call in (generate_classic_to_other_entries()):
+        calls_parameters.append(call)
+    print(calls_parameters)
+    # длительность тестового звонка
+    durability_call = get_durability_call(calls_parameters)
 
     # получим количество звонков, которое было в БД Постгрес до добавления
     request = "SELECT * FROM cdrs;"
@@ -34,4 +39,4 @@ def test_add_cdrs(browser, db_connection_brt):
     # десятая содержит звонок абонента с некорректной датой
     assert end_amount_calls - start_amount_calls == 10
     # баланс первого абонента уменьшился на нужную сумму
-    assert start_balance_A1 - end_balance_A1 == 2.5
+    assert start_balance_A1 - end_balance_A1 == durability_call * 2.5
